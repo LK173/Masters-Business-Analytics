@@ -1,0 +1,907 @@
+---
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# INSTRUCTIONS
+
+-   This is an individual assignment.
+-   Submit your answer digitally as two files through Moodle:
+    -   An R markdown file (extension **Rmd**). Use the template
+        provided to you and provide your answers (both code and text)
+        below each question.
+    -   An **HTML** file "knitted" by RStudio including all the results
+        and plots. More details on how to create these files will be
+        provided in class on week 3.
+-   Follow the Style Guide (available on Moodle). You can be penalized
+    on up to 20% in each question for which you do not follow the Style
+    Guide.
+-   Questions regarding the assignment should be posted
+    [exclusively]{.underline} on the respective discussion forum on
+    Moodle.
+
+[**Warning:**]{.underline} The detection of [any form of
+plagiarism]{.underline} in your work means the assignment will be graded
+with [ZERO points]{.underline}.
+
+\newpage
+
+# Movie Networks
+
+We are interested in assessing what are the most important movies in the
+decade 2010-2019. We will use different strategies to do so. First, we
+will load and prepare the data.
+
+## Load and prepare the data
+
+The first step is to load and prepare the movie data. The following
+instructions perform some routine data preparation operations. Each set
+of instructions is preceded by a comment explaining the procedure. Run
+the code below and try to understand each line of code as you might need
+to perform some changes.
+
+```{r   }
+library(data.table)     # Run once per session
+library(ggplot2)        # Run once per session
+
+# Load data from file 20200120-imdb_movie_actor.csv (do not forget to
+# change your working directory to the folder containing the
+# 20200120-imdb_movie_actor.csv file)
+dt.movie.actor <- fread("20200120-imdb_movie_actor.csv") 
+
+# Count in how many movies each actor has participated and how many 
+# principal actor each movie has
+dt.movie.actor[, n_movies := .N, by=actor]
+dt.movie.actor[, n_actors := .N, by=list(movie, year)]
+
+# Remove entries in which actors have no name 
+dt.movie.actor <- dt.movie.actor[!(actor == "")]
+
+# Save dt.movie.actor. Next time you can simply call the load function (below)
+save(dt.movie.actor, file="imdb_movie_actor.RData") 
+```
+
+Load the data that you prepared using the instructions below. As
+mentioned in the comments, you can start from this line if you have
+previously saved these data.
+
+```{r   }
+library(data.table)     # Run once per session
+library(ggplot2)        # Run once per session
+# Load previously saved dt.movie.actor. You can
+# start in this line if you have previously saved these data.
+load("imdb_movie_actor.RData") 
+```
+
+## Questions (`data.table`) `[7 points]`
+
+This set of questions require that you know how to manipulate a
+`data.table`. Answer each of the following questions below. Include all
+the code you created/used in your answer.
+
+1.  What is the total amount of movies in the `dt.movie.actor` dataset?
+    `[1 point]`
+
+```{r}
+# <answer here>
+# Get the unique values of the total number of movies---------------------------
+
+unique.total.movies <- NROW(unique(dt.movie.actor$movie))
+
+# Print the unique value of total movies----------------------------------------
+
+cat("The total amount of movies is", unique.total.movies, "\n")
+
+```
+
+The total amount of movies is 368522
+
+2.  List the actors from the movie `"Fight Club (1999)"`. List the
+    actors from the movie `"Se7en (1995)"`. `[1 point]`
+
+```{r}
+# <answer here>
+# List and print the actors from "Fight Club (1999)"----------------------------
+
+l.fight.club.actors <- as.list(dt.movie.actor$actor[dt.movie.actor$movie == 
+                                                      "Fight Club (1999)"])
+
+cat("Actors from 'Fight Club (1999)':\n", paste(l.fight.club.actors,
+                                                collapse = ", "), "\n")
+
+# List and print the actors from "Se7en (1995)"---------------------------------
+
+l.se7en.actors <- as.list(dt.movie.actor[movie == "Se7en (1995)"][, actor])
+
+
+cat("Actors from 'Se7en (1995)':\n", paste(l.se7en.actors, collapse = ", "),
+    "\n")
+```
+
+3.  Which actors participated on both movies? Hint: The function
+    `intersect` calculates the intersection of two sets. `[1 point]`
+
+```{r}
+# <answer here>
+# Find and print the actors who participated in fight.club and se7en------------
+
+l.common.actors <- intersect(l.fight.club.actors, l.se7en.actors)
+
+cat("Actors who participated in both 'Fight Club (1999)' and 'Se7en (1995)':\n", 
+    paste(l.common.actors, collapse = ", "), "\n")
+```
+
+4.  In which movies did Brad Pitt (b.1963) and George Clooney (b.1961)
+    star together? `[1 point]`
+
+```{r}
+# <answer here>
+# Find and print the movies with Brad Pitt (b.1963) and #George Clooney (b.1961)
+# ------------------------------------------------------------------------------
+movies.brad.pitt <- dt.movie.actor$movie[dt.movie.actor$actor ==
+                                           "Brad Pitt (b.1963)"]
+
+movies.george.clooney <- dt.movie.actor$movie[dt.movie.actor$actor ==
+                                                "George Clooney (b.1961)"]
+
+movies.both.actors <- intersect(movies.brad.pitt, movies.george.clooney)
+
+cat("Movies in which Brad Pitt and George Clooney starred together:\n", 
+    paste(movies.both.actors, collapse = ", "), "\n")
+```
+
+5.  Create a table that shows the number of movies released per year.
+    This table should include three columns: `year`, `n_movies`, and
+    `csum_n_movies`. The first column should contain the year, the
+    second the number of movies in that year, and the third, the number
+    of movies released since the first year in the data and up to the
+    year in that line. Tip: Use the function `cumsum` and check if the
+    amount in the last year is the same as the total number of movies in
+    question 1. `[1 point]`
+
+```{r}
+# <answer here>
+# create a new data table with the number of movies per year and csum_n_movies--
+# ------------------------------------------------------------------------------
+dt.unique.movies <- unique(dt.movie.actor, by = c("year", "movie"))
+
+dt.movies.per.year <- dt.unique.movies[, .(n_movies = .N), 
+                                       by = year][order(year)]
+dt.movies.per.year[, csum_n_movies := cumsum(n_movies)]
+
+print(dt.movies.per.year)
+
+# Check if the total number of movies in question 1 is equal to the last line of
+# the new data table------------------------------------------------------------
+
+cat("\n The sum of number of movies (last row) is ", 
+    paste(tail(cumsum(dt.movies.per.year$n_movies), n = 1)), " this shows the
+    same result as the total number of movies from question 1\n")
+
+```
+
+6.  Which actor/actress has starred in the most movies across all data?
+    After (and including) 2000, which year has the most movie
+    participations by a single actor/actress? Who is that actor/actress?
+    What do these two actors/actresses have in common? `[1 point]`
+
+```{r}
+# <answer here>
+# Actor/actress in the most movies in all data----------------------------------
+
+dt.actor.counts <- dt.movie.actor[, .(n_movies = .N), by = actor]
+dt.sorted.movies <- dt.actor.counts[order(-n_movies)][1]
+
+cat("\n Actor/actress in the most movies in all data\n")
+print(dt.sorted.movies)
+
+# Actor with most movies from year 2000 (incl.)---------------------------------
+
+dt.movies.2000 <- dt.movie.actor[year >= 2000][order(year)]
+dt.actor.counts.2000 <- dt.movies.2000[, .(n_movies = .N), by = .(actor, year)]
+dt.sorted.movies.2000 <- dt.actor.counts.2000[order(-n_movies)][1]
+
+cat("\n Actor with most movies from year 2000 (incl.)\n")
+print(dt.sorted.movies.2000)
+
+# Common features of both actors------------------------------------------------
+
+cat("\nThe actor/actress", dt.sorted.movies$actor, 
+    "has an birthdate behind the name and the actor/actress", 
+    dt.sorted.movies.2000$actor, "has no birthday behind the name")
+
+# Check if both played in one movie
+
+movies.brahmanandam <- dt.movie.actor$movie[dt.movie.actor$actor == 
+                                              "Brahmanandam (b.1956)"]
+movies.anil <- dt.movie.actor$movie[dt.movie.actor$actor == 
+                                      "Anil Nagrath"]
+movies.both.actors.c <- intersect(movies.brahmanandam, movies.anil)
+print(movies.both.actors.c)
+
+# Calculating the common features of both actors and check each column----------
+# First create a data table for each actor--------------------------------------
+
+dt.movies.brahmanandam <- dt.movie.actor[actor == "Brahmanandam (b.1956)"]
+dt.movies.anil <- dt.movie.actor[actor == "Anil Nagrath"]
+
+# Check common features for year------------------------------------------------
+
+common.year <- intersect(dt.movies.brahmanandam$year[
+  !is.na(dt.movies.brahmanandam$year)], 
+  dt.movies.anil$year[!is.na(dt.movies.brahmanandam$year)])
+
+# Check common features for duration--------------------------------------------
+
+common.duration <- intersect(dt.movies.brahmanandam$duration[
+  !is.na(dt.movies.brahmanandam$duration)], 
+  dt.movies.anil$duration[!is.na(dt.movies.anil$duration)])
+
+# Check common features for adult_movies----------------------------------------
+
+common.adult.movies <- intersect(dt.movies.brahmanandam$adult_movies[
+  !is.na(dt.movies.brahmanandam$adult_movies)], 
+  dt.movies.anil$adult_movies[!is.na(dt.movies.anil$adult_movies)])
+
+# Check common features for rating----------------------------------------------
+
+common.rating <- intersect(dt.movies.brahmanandam$rating[
+  !is.na(dt.movies.brahmanandam$rating)], 
+  dt.movies.anil$rating[!is.na(dt.movies.anil$rating)])
+
+# Check common features for votes-----------------------------------------------
+
+common.votes <- intersect(dt.movies.brahmanandam$votes[
+  !is.na(dt.movies.brahmanandam$votes)], 
+  dt.movies.anil$votes[!is.na(dt.movies.anil$votes)])
+
+cat("\nBoth actors participated in movies in the following years ", 
+    common.year)
+cat("\nBoth actors participated in a number of ",
+    length(common.duration), " movies with the same duration")
+cat("\nBoth actors participated in a number of ", 
+    length(common.adult.movies), " adult_movies")
+cat("\nBoth actors participated in a number of ",
+    length(common.rating), " movies with the same rating")
+cat("\nBoth actors participated in ", length(common.votes), 
+    " movies with the same votes")
+
+```
+
+7.  Consider only the 10% most popular movies (by votes) in the decade
+    2010-2019. List the top 10 actors that starred in the most movies in
+    the decade. Which year(s) has/have the most movie participations by
+    a single actor? Hint: you can use the function `quantile` to find
+    how many votes does the movie in percentile 90 have. `[1 point]`
+
+```{r}
+# <answer here>
+
+# List the top 10 actors that starred in the most movies in the decade 2010-1019
+# ------------------------------------------------------------------------------
+dt.movies.decade <- dt.movie.actor[year >= 2010 & year < 2020]
+dt.movies.decade.unique <- unique(dt.movies.decade, by = "movie")
+dt.sorted.votes <- dt.movies.decade[order(votes, decreasing = TRUE)]
+
+# Calculation of 90 percentile of number of votes and dropping of NA's----------
+
+dt.votes.no.na <- dt.sorted.votes[complete.cases(dt.sorted.votes$votes)]
+dt.votes.threshold <- quantile(dt.votes.no.na$votes, 0.9)
+
+cat("90 percentile of the number of votes is:", dt.votes.threshold, "votes")
+
+# Filter the data to include only the 10% most popular movies by votes----------
+
+dt.popular.movies <- dt.movies.decade[dt.movies.decade$votes >= 
+                                        dt.votes.threshold][order(votes,
+                                                                  decreasing =
+                                                                    TRUE)]
+
+# Count the top 10 actors by number of movies in the decade---------------------
+
+l.top.10.actors <- as.list(dt.popular.movies[, . (n_movies = .N), by = 
+                                               actor][order(-n_movies)][1:10])
+
+dt.top.10.actors <- dt.popular.movies[, . (n_movies = .N), by = 
+                                        actor][order(-n_movies)][1:10]
+
+
+cat("\n\nThe top 10 actors in the decade 2010-2019 by number of movies are ", 
+    paste(l.top.10.actors, collapse = ", "), "\n\n")
+
+head(dt.top.10.actors, 10)
+
+
+# Calculate the number of movies each actor starred in per year-----------------
+
+dt.actor.participations.year <- dt.popular.movies[, . (n_movies = .N), by = 
+                                                    .(actor, 
+                                                      year)][order(-n_movies)]
+
+# Get the year(s) with the most movie participations by a single actor----------
+
+dt.top.years.by.actor <- dt.actor.participations.year[1:2]
+
+print(dt.top.years.by.actor)
+
+cat("\n\nThe year(s) with most movie participations by a single actor in the 
+    decade 2010-2019 by the number of movies are ", 
+    paste(dt.top.years.by.actor$year, collapse = ", "), "\n")
+
+```
+
+## Questions (`ggplot2`) `[3 points]`
+
+1.  Plot a histogram with the number of movies per year. Which patterns
+    do you observe? Is there anything strange? `[1 point]
+
+Observations:
+An even distribution of new film launches can be seen from 
+1934 to 2000. From 2000 onwards, a steep and enomeric increase in new film 
+launches can be seen. This may be related to the introduction of the 
+internet. However, further data must be analyzed for this. Furthermore, 
+this may be related to the fact that movies have been made easily accessible
+to the masses through streaming services like netflix, which was founded in 
+1997 and started out by sending DVDs to customers' homes. Thus, the film 
+industry has been able to earn more money through the easy accessibility of 
+films. In general you can see an positiv and increasing trend by a 
+increasing number of movies per year over time`
+
+```{r}
+# <answer here>
+library(ggplot2)
+
+# Unique movies per year to prevent double count of movies----------------------
+
+dt.movies.unique.per.year <- unique(dt.movie.actor, by = "movie")
+
+# Count the number of movies per year-------------------------------------------
+
+dt.movies.sum.per.year <- dt.movies.unique.per.year[, .(n_movies = .N), 
+                                                    by = year]
+
+# Plot the histogram of the numbers of movies per year--------------------------
+
+ggplot(dt.movie.actor[!duplicated(dt.movie.actor$movie)], aes(x = year)) + 
+  geom_histogram(binwidth = 1, color = "black", fill = "red") +
+  xlab("Year") +
+  ylab("Number of Movies") +
+  ggtitle("Number of Movies per Year")
+
+```
+
+2.  Plot a histogram that represents the distribution of number of IMDb
+    votes per movie. The x-axis should represent the number of votes and
+    the y-axis should represent how many movies have x number of votes.
+    Which patterns do you observe? `[1 point]`
+    
+
+Observation:
+
+There is a clear pattern that the number of movies decreases as the number of 
+votes increases. Most movies have votes up to 100 and the middle part goes up to
+10,000 votes. After that, the number continues to decrease sharply to 0.Thus, a 
+few movies have votes of up to 2 million.
+
+```{r}
+# <answer here>
+# Create histogram of the distribution of number of IMDb votes per movies-------
+
+ggplot(dt.movie.actor[!duplicated(dt.movie.actor$movie)], aes(x = votes)) +
+  geom_histogram(binwidth = 0.02, color = "black", fill = "red", alpha = 0.6, 
+                 na.rm = TRUE) +
+  scale_x_log10(labels=scales::comma) +
+  xlab("Number of IMDb Votes in log10 scale") +
+  ylab("Number of Movies that have x number of votes") +
+  ggtitle("Distribution of number of IMDb votes per movie")
+```
+
+3.  Plot a histogram that represents the distribution of the number of
+    actors per movie. The x-axis should represent the number of actors
+    and the y-axis should represent how many movies have x number of
+    actors. Describe your findings. `[1 point]`
+    
+Describe your findings:
+
+The range of the number of actors per movie goes from one to ten actors. By far 
+the most movies with over 200,000 movies have 4 actors. The other numbers of 
+actors are evenly balanced between 15,000 and 25,000 except from 9 and 10 
+actors. This shows the big difference and the overhang with a number of 4 actors
+per movie. This may also be due to the fact that IMBD at a certain point in time
+limited the number of actors displayed on their website to a number of 4 actors 
+and do not display any more. 
+Care must be taken to ensure that the data basis never shows all actors, but 
+only the most important ones. A flim cannot consist of only 1-10 actors. 
+Therefore, it should be noted that the graph is not the reality, but always the 
+caps are displayed from which no further actors are listed.
+
+
+```{r}
+# <answer here>
+# Count the number of actors per movies by grouping over movies and 
+# count actor per group---------------------------------------------------------
+
+dt.actors.per.movies <- dt.movie.actor[, .(n_actors = uniqueN(actor)), by = 
+                                         movie]
+
+# Plot histogram of distribution of the number of actors per movie--------------
+
+ggplot(dt.actors.per.movies, aes(x = n_actors)) +
+  geom_histogram(binwidth = 0.5, color = "black", fill = "red", alpha = 0.6, 
+                 na.rm = TRUE) +
+  scale_x_continuous(limits = c(0, 25), breaks = seq(0, 25, by = 1)) + 
+  xlab("Number of actors") +
+  ylab("Number of Movies that have x number of actors") +
+  ggtitle("Distribution of number of actors per movie")
+
+
+```
+
+## Questions (`igraph`) `[10 points]`
+
+1.  From this question onwards, and until the end of the assignment,
+    focus only on [the actors that participated on the top 50 most
+    popular movies from the 2010-2019 decade (by number of
+    votes).]{.underline} Load the `igraph` package and create a
+    bipartite graph in which the edges correspond to actors'
+    participation in movies. How many movie participations exist?
+    `[1 point]`
+
+```{r}
+# <answer here>
+library(igraph)
+
+# Actors that participated on the top 50 most popular movies from 2010-2019
+# decade by number of votes-----------------------------------------------------
+
+# Filter the unique movies from 2010-2019 and select the top 50 by number 
+# of votes----------------------------------------------------------------------
+
+dt.actors.top.50.movies.unique <- unique(dt.movie.actor, by = "movie")
+dt.actors.top.50.movies <- dt.actors.top.50.movies.unique[year >= 2010 & 
+                                                            year <= 2019][order(
+                                                              -votes)][1:50, 
+                                                                       .(movie)]
+
+
+# Join the top 50 movies with the movie-actor data to get all details back------
+
+dt.top.50.actors.decade <- dt.movie.actor[movie %in% 
+                                            dt.actors.top.50.movies$movie]
+dt.all.movies.selected.actors <- dt.movie.actor[actor %in% 
+                                                  dt.top.50.actors.decade$actor]
+
+# Create a bipartite graph of movies and actors---------------------------------
+
+all.actors <- dt.all.movies.selected.actors[, list(name = unique(actor), 
+                                                   type = TRUE)]
+all.movies <- dt.all.movies.selected.actors[, list(name = unique(movie),
+                                                   type = FALSE)]
+
+all.vertices <- rbind(all.actors, all.movies)
+g.movies.50 <- graph.data.frame(dt.all.movies.selected.actors[, list(movie, 
+                                                                     actor)],
+                                directed = FALSE, vertices=all.vertices)
+
+# Plot the bipartite graph g.movies.50------------------------------------------
+
+V(g.movies.50)$color <- ifelse(V(g.movies.50)$type == 1, "red", "blue")
+
+plot(g.movies.50, layout = layout.bipartite(g.movies.50), vertex.label = NA)
+
+plot(g.movies.50, layout = layout_with_fr, vertex.color = V(g.movies.50)$color, 
+     vertex.label = NA, vertex.size = 1, margin = -0.1)
+
+# Calculate the number of movie participations----------------------------------
+
+num.participations <- length(E(g.movies.50))
+
+cat("The number of movie participations is", num.participations, "\n\n")
+
+summary(g.movies.50)
+
+```
+
+2.  Create a graph in which two movies are connected to each other if
+    they have [at least one actor in common]{.underline}. Calculate the
+    [degree centrality]{.underline} for each of the movies, and remove
+    movies with no connections to other movies. [Hint:]{.underline} the
+    function `induced.subgraph` allows the creation of graphs with only
+    a subset of the vertices. Calculate the following additional
+    centrality measures for each of these movies: `[2 points]`
+    -   Closeness centrality
+    -   Betweenness centrality
+    -   Eigenvector centrality
+
+```{r}
+# <answer here>
+
+# Get the unipartite projection 1 of movies which show two movies are connected
+# to each other of they have at least one actor in common-----------------------
+
+g.movies.proj.1 <- bipartite.projection(g.movies.50)$proj1
+
+# Test if th graph contains movie with a degree of 0----------------------------
+
+
+degrees.proj.1 <- degree(g.movies.proj.1)
+isolated.movies <- which(degrees.proj.1 == 0)
+
+cat("\nNumber of movies with a degree of zero in the projection 1 graph\n")
+print(isolated.movies)
+
+# Create and plot the subgraph with only connected movies including the summary
+# ------------------------------------------------------------------------------
+
+g.movies.subgraph <- induced.subgraph(g.movies.proj.1, 
+                                      which(degree(g.movies.proj.1) > 0))
+
+plot(g.movies.subgraph, layout = layout_with_fr, 
+     vertex.color = V(g.movies.subgraph)$color, vertex.label = NA, 
+     vertex.size = 1, margin = -0.1, edge.width = 0.01)
+summary(g.movies.subgraph)
+
+# Calculate degree centrality and remove movies from data source without 
+# connections-------------------------------------------------------------------
+
+g.movies.remove <- delete.vertices(g.movies.proj.1, 
+                                   degree(g.movies.proj.1) == 0)
+
+degree.centrality <- degree(g.movies.remove, mode = "all")
+
+closeness <- closeness(g.movies.remove)
+betweenness <- round(betweenness(g.movies.remove), 4)
+eigenvector <- round(evcent(g.movies.remove)$vector, 4)
+
+# Create and print a dataframe with centrality measures-------------------------
+
+df.centrality.measures.movies <- data.frame(degree = degree.centrality,
+                                            closeness = closeness, 
+                                            betweenness = betweenness, 
+                                            eigenvector = eigenvector)
+
+print(df.centrality.measures.movies)
+
+
+```
+
+3.  For each centrality measure, list the top 20 movies with highest
+    centrality. How do you interpret the outcomes? `[2 points]`
+    
+
+Interpretation of the outcome:
+
+General procedure:
+Using of round(closeness(g, normalize=TRUE), 2) gives a better idea of the 
+relative closeness centrality values of the vertices in the graph, because the
+normalized values are rescaled to a range between 0 and 1 where 1 represents 
+the highest possible closeness centrality value that can be achieved in the 
+graph. This allows for a comparison of the closeness centrality values across
+different graphs, even if they have different numbers of vertices.
+
+The network is therefore very large with 3207 nodes and 68196 edges. In the 
+following, I refer to the absolute values of the measures. For better 
+interpretation, the normalized value for the top 20 movies is used, as the 
+absolute value is not interpretable and is either very small or very large 
+for almost all movies.
+
+The low degree, such as with Captain America: The Winter Soldier (2014) with 
+0.0577, shows that the movies are not really closely and well connected to all
+other movies but rather form a chain, as I assume. This also means that no movie
+is extremely important for the network and the network would not collapse or 
+affect many other nodes if the movie were lost. 
+
+The closeness of the top 20 movies is rather in the lower middle range, with 
+Shutter Island (2010) with 0.4051, for example. This value shows that the movies
+are not closely and easily reachable. So it is not impossible but also not very
+easy to get to other movies quickly and directly. This is also related to the 
+low degree and thus the lack of close connectivity among the top 20 movies. 
+The movies with the highest closeness centrality are the ones that can be 
+reached the quickest from any other movie in the network. In our case no movie
+has an really high closeness.
+
+Betweenness measures the extent to which a node lies on the shortest path 
+between other pairs of nodes in a network. Nodes with high betweenness 
+centrality are important because they act as bridges between different parts of 
+the network. The betweenness approaches zero, so the top movie, The Grand 
+Budapest Hotel (2014), has a betweenness of 0.0509. This means that a movie is 
+not often taken as a bridge to other pairs of nodes in order to get to movies in
+other parts of the network. Therefore, this measure is also dependent on the low
+degree. The movies do not play a big role in the interaction and communication 
+of information exchange among themselves.
+
+The only value that naturally lies between 0 and 1 and is not already normalized
+is the eigenvector. Nodes with high eigenvector centrality are those that are 
+connected to other highly central nodes. This value is close to the maximum of 
+1. This means that the top 20 movies are extremely well connected to each other.
+This is also evident when plotting the large graph, which is a large central 
+cloud and not widely scattered except for a few movies that are apparently less 
+popular. Therefore, individual edges cannot be recognized, and it is more like a
+large cloud. The high eigenvector is also due to the fact that popular movies 
+usually also share popular actors. This is the case because a movie becomes more
+well-known and popular when popular actors appear in it, drawing fans and 
+viewers to the cinema.Finally, the top 20 movies with the highest eigenvector 
+centrality are the ones that are connected to other important movies in the 
+network.
+
+Overall, it is a large and centrally located network, but poorly connected to 
+each other. This means that information exchange is not guaranteed, and the 
+individual movies are not connected to all but rather form a chain.
+
+
+```{r}
+# <answer here>
+
+# Normalized centrality measures for better interpretations---------------------
+
+normalized.degree <- round(degree(g.movies.remove, normalized = TRUE), 4)
+normalized.closeness <- round(closeness(g.movies.remove, normalize = TRUE), 4)
+normalized.betweenness <- round(betweenness(g.movies.remove, 
+                                            normalize = TRUE), 4)
+
+
+# Degree centrality-------------------------------------------------------------
+
+df.top.degree.centrality <- data.frame(degree = 
+                                         head(sort(degree.centrality, 
+                                                   decreasing = TRUE), 20), 
+                                       normalized_degree = 
+                                         head(sort(normalized.degree, 
+                                                   decreasing = TRUE), 20))
+
+print("Top 20 movies with highest degree centrality:\n")
+print(df.top.degree.centrality)
+
+# Closeness centrality----------------------------------------------------------
+
+df.top.closeness <- data.frame(closeness = 
+                                 head(sort(closeness, 
+                                           decreasing = TRUE), 20),
+                               normalized_closeness = 
+                                 head(sort(normalized.closeness, 
+                                           decreasing = TRUE), 20))
+
+print("Top 20 movies with highest closeness centrality:\n")
+print(df.top.closeness)
+
+# Betweenness centrality--------------------------------------------------------
+
+df.top.betweenness <- data.frame(betweenness = 
+                                   head(sort(betweenness, 
+                                             decreasing = TRUE), 20),
+                                 normalized_betweenness = 
+                                   head(sort(normalized.betweenness, 
+                                             decreasing = TRUE), 20))
+print("Top 20 movies with highest betweenness centrality:\n")
+print(df.top.betweenness)
+
+# Eigenvector centrality--------------------------------------------------------
+
+df.top.eigenvector <- data.frame( eigenvector = 
+                                    head(sort(eigenvector, 
+                                              decreasing = TRUE), 20))
+print("Top 20 movies with highest eigenvector centrality:\n")
+print(df.top.eigenvector)
+
+```
+
+4.  Calculate the average clustering coefficient for the movies network.
+    `[1 point]`
+
+```{r}
+# <answer here>
+# Calculation of the average clustering coefficient-----------------------------
+
+clustering.coefficient <- transitivity(g.movies.remove, type = "average")
+clustering.coefficient.round <- round(transitivity(g.movies.remove, 
+                                                   type = "average"), 4)
+
+cat("The average clustering coefficient for the movies network is" , 
+    paste(clustering.coefficient),".\n\n")
+
+cat("The rounded average clustering coefficient for the movies network is" ,
+    paste(clustering.coefficient.round), ".")
+
+```
+
+5.  Choose one movie you like and plot the movie, their direct neighbors
+    and the links among them. What is the clustering coefficient of this
+    movie? Which is the actor with most participations among these
+    (neighbor) movies, but not having participated in the movie itself?
+    `[2 points]`
+
+```{r}
+# <answer here>
+
+# Favorite movie----------------------------------------------------------------
+
+chosen.movie <- "Iron Man 3 (2013)"
+
+# Create a subgraph consisting of the chosen movie and its neighbors------------
+
+movie.neighbors <- neighbors(g.movies.subgraph, chosen.movie)
+
+all.vertices.neighbors <- c(V(g.movies.subgraph)[movie.neighbors], 
+                            V(g.movies.subgraph)[chosen.movie])
+
+
+# Transforming movie.neighbors in a graph object--------------------------------
+
+g.movie.neighbors <- induced_subgraph(g.movies.subgraph, all.vertices.neighbors)
+
+# Plot the subgraph with the chosen movie in red as focal node and 
+# neighbors blue----------------------------------------------------------------
+
+plot(g.movie.neighbors, vertex.color = ifelse(V(g.movie.neighbors)$name == 
+                                                chosen.movie, "red", "blue"), 
+     vertex.size = 2, vertex.label = NA)
+
+# Calculation of the clustering coefficient-------------------------------------
+
+clustering.coeff <- transitivity(g.movie.neighbors, type = "local", 
+                                 vids = chosen.movie)
+
+cat("\nThe local clustering coefficient of", chosen.movie, 
+    "with the neighbors is", clustering.coeff, "\n")
+
+# Extract the list of actors who participated in the chosen movie---------------
+
+# Get the vertex ID of the chosen movie-----------------------------------------
+
+chosen.movie.vertex <- V(g.movies.50)[name == chosen.movie]$name
+
+# Get all the edges that are connected to the chosen movie----------------------
+
+chosen.movie.edges <- E(g.movies.50)[.from(chosen.movie.vertex) | 
+                                       .to(chosen.movie.vertex)]
+
+# Get the vertex IDs of all the actors connected to the chosen movie------------
+
+chosen.movie.actors <- unique(c(V(g.movies.50)[.from(chosen.movie.edges)]$name, 
+                                V(g.movies.50)[.to(chosen.movie.edges)]$name))
+
+
+# Find the set difference between the two lists by using all.actors of task 1---
+
+nonparticipating.actors <- setdiff(all.actors, chosen.movie.actors)
+
+# For each of these actors, count the number of movies they participated in-----
+
+dt.filtered.nonparticipating <- dt.all.movies.selected.actors[
+  dt.all.movies.selected.actors$actor %in% nonparticipating.actors$name]
+
+dt.group.actor <- dt.filtered.nonparticipating[, .(freq = .N), by = 
+                                                 actor]
+max.participation.actor <- dt.group.actor[order(-freq)][1]
+
+cat("\nThe actor with the most movie participations among those who did not 
+    participate in", chosen.movie, "is", max.participation.actor$actor, "with", 
+    max.participation.actor$freq, "participations.")
+
+```
+
+6.  Plot the degree distribution of the movies. How do you compare them
+    with the degree distribution of a random graph? What can be
+    plausible explanations for the observed differences? `[2 points]`
+
+Explanations of plausability:
+
+When we compare the degree distribution of the film network with that of the 
+Erdos- Renyi and small world random graphs, we can see that the film network 
+have a much higher degree distribution, especially at higher degrees. The 
+original network goes to degree 150 and Erdos-Renyi only to a maximum of 70 and 
+small world even only to 50. This shows that the original movie network has a 
+much higher number of strongly connected nodes, which is probably due to the 
+fact that some movies are much more popular than others, and therefore have many
+more connections to actors than less popular movies.
+The most popular movies will also have the most popular and best actors because 
+they are the most popular and attract the most viewers.The most popular films 
+will therefore be more closely related to each other than movies with lesser 
+known actors, and therefore the movie will be less known. So the most popular 
+movies will have a high degree of network and the lesser known movies will have 
+a lower degree of network because they are not closely related and do not have 
+the same actors as the popular movies.
+
+In contrast, the preferential attachment random graph has a similar degree 
+distribution as the original network. Both start at Degree zero and are more 
+oriented towards the left edge. In contrast, Erdos-Renyi and small world are 
+more normally distributed. The summary with the average degree, the transitivity
+and the average path length gives more information about where they differ 
+compared to the original. It was always tried to match as closely as possible 
+the number of nodes and edges of the original graph.
+
+Thus, the preferential attachment random graph best matches the distribution of 
+the original graph.
+
+The random graphs are created by replicate the original subgraph. That's why
+the mean degree, avg. clustering coefficient and avg. path length and summary of
+nodes and vertices is printed of each graph. That is useful to try to get the 
+same statistics by the random graphs compared to the original graphs. This 
+guarantee that the random graphs are approximately the same as the original
+graph.
+
+
+
+
+```{r}
+# <answer here>
+
+# Plot the degree distribution for our g.movies.subgraph network and calculate 
+# the statisitcs to replicate the random graphs below---------------------------
+
+degree.subgraph <- degree(g.movies.subgraph)
+hist(degree(g.movies.subgraph), 
+     main = "Degree Distribution of the original g.movies.subgraph", 
+     xlab = "Degree", ylab = "Number of movies", col = "red", border = "white",
+     breaks = seq(0, max(degree.subgraph) + 10, by = 2))
+
+cat("\n Statistical summary of the original graph:\n")
+mean(degree(g.movies.subgraph))
+transitivity(g.movies.subgraph, type = "average")
+average.path.length(g.movies.subgraph)
+summary(g.movies.subgraph)
+
+# Generate a random graph with the number of vertices and edges of the movie 
+# graph Erdos-Renyi Network-----------------------------------------------------
+
+g.er.random <- sample_gnm(n = vcount(g.movies.subgraph), 
+                          m = ecount(g.movies.subgraph))
+
+cat("\n Statistical summary of the Erdos-Renyi random graph:\n")
+mean(degree(g.er.random))
+transitivity(g.er.random, type = "average")
+average.path.length(g.er.random)
+summary(g.er.random)
+
+# Plot the degree distribution for the Erdos-Renyi random graph and 
+# calculate the statisitcs to replicate the random graphs below-----------------
+
+degree.er <- degree(g.er.random)
+hist(degree.er, 
+     main = "Degree Distribution of the Erdos-Renyi random graph", 
+     xlab = "Degree", ylab = "Number of movies", col = "red", border = "white",
+     breaks = seq(0, max(degree.er) + 30, by = 2))
+
+# Generate a small world random graph with number of vertices and edges of 
+# movie graph-------------------------------------------------------------------
+
+g.sw.actors <- sample_smallworld(dim = 1, size = vcount(g.movies.subgraph), 
+                                 nei = 21, p = 0.02)
+
+cat("\n Statistical summary of the small world random graph:\n")
+mean(degree(g.sw.actors))
+transitivity(g.sw.actors, type = "average")
+average.path.length(g.sw.actors) 
+summary(g.sw.actors)
+
+# Plot the degree distribution for the small world Network random graph and 
+# calculate the statisitcs to replicate the random graphs below-----------------
+
+degree.sm <- degree(g.sw.actors)
+hist(degree.sm, 
+     main = "Degree Distribution of the small world Network random graph", 
+     xlab = "Degree", ylab = "Number of movies", col = "red", border = "white",
+     breaks = seq(min(degree.sm) - 10, max(degree.sm) + 10, by = 1))
+
+# Generate a preferential attachment random graph with number of vertices and 
+# edges of movie graph----------------------------------------------------------
+
+g.pa.actors <- sample_pa(n = vcount(g.movies.subgraph), m = 21, 
+                         directed = FALSE)
+
+cat("\n Statistical summary of the preferential attachment random graph:\n")
+mean(degree(g.pa.actors))
+transitivity(g.pa.actors, type = "average")
+average.path.length(g.pa.actors) 
+summary(g.pa.actors)
+
+# Plot the degree distribution of the preferential attachment random graph------
+
+degree.pa <- degree(g.pa.actors)
+hist(degree.pa, 
+     main = "Degree Distribution of a preferential attachment random graph", 
+     xlab = "Degree", ylab = "Number of movies", col = "red", border = "white",
+     breaks = seq(min(degree.pa) - 10, max(degree.pa) + 10, by = 10))
+
+```
